@@ -1,0 +1,37 @@
+{
+  "name": "desktop-pet",
+  "displayName": "桌面宠物生成器",
+  "description": "基于用户提供的 pet.json 和 spritesheet.webp 文件，一键初始化 Electron Mac 桌面宠物项目，包含完整的动画系统、控制面板、定时提醒等功能",
+  "version": "0.1.0",
+  "createdAt": "2026-05-19",
+  "commands": [
+    {
+      "name": "init",
+      "displayName": "初始化桌面宠物项目",
+      "description": "在用户指定目录创建 Electron 桌面宠物项目，需要用户提供 pet.json 和 spritesheet.webp",
+      "parameters": [
+        {
+          "name": "projectPath",
+          "displayName": "项目路径",
+          "description": "桌面宠物项目保存的路径",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "start",
+      "displayName": "启动桌面宠物",
+      "description": "启动已初始化的桌面宠物",
+      "parameters": [
+        {
+          "name": "projectPath",
+          "displayName": "项目路径",
+          "description": "桌面宠物项目的路径",
+          "type": "string",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

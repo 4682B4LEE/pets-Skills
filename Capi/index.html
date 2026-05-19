@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>水豚桌宠</title>
+    <style>
+        /* =========================================================
+         * Claude Design Style - 温暖优雅的 H5 设计系统
+         * 描述: 带有浓厚人文气息的 Claude 风格，暖米灰底色、衬线体标题、陶土红主色
+         * ========================================================= */
+
+        /* --- 1. 全局设计系统覆盖 (CSS Variables) --- */
+        :root {
+            --color-primary: #D1775A;
+            --color-primary-text: #FFFFFF;
+            --bg-page: #F3EFEA;
+            --bg-surface: #FFFFFF;
+            --text-main: #2C2B29;
+            --text-muted: #7E7972;
+            --border-color: #E6E1D9;
+            --border-radius-sm: 6px;
+            --border-radius-md: 10px;
+            --border-radius-lg: 16px;
+            --border-radius-round: 9999px;
+            --spacing-xs: 6px;
+            --spacing-sm: 12px;
+            --spacing-md: 20px;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            /* Electron 透明背景 */
+            background-color: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: var(--text-main);
+        }
+
+        /* 核心画布 */
+        #petCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: grab;
+            z-index: 9999;
+        }
+
+        #petCanvas:active {
+            cursor: grabbing;
+        }
+
+        /* --- 控制面板图标 --- */
+        .controls-icon {
+            position: fixed;
+            bottom: var(--spacing-md);
+            left: var(--spacing-md);
+            width: 48px;
+            height: 48px;
+            border-radius: var(--border-radius-lg);
+            background-color: rgba(253, 252, 251, 0.92);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04), 0 1px 4px rgba(0, 0, 0, 0.02);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 10000;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+            overflow: hidden;
+        }
+
+        .controls-icon:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+        }
+
+        .controls-icon img {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+            pointer-events: none;
+        }
+
+        /* --- 控制面板展开内容 --- */
+        .controls-panel {
+            position: fixed;
+            bottom: calc(var(--spacing-md) + 56px);
+            left: var(--spacing-md);
+            background-color: rgba(253, 252, 251, 0.95);
+            padding: var(--spacing-sm);
+            border-radius: var(--border-radius-lg);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04), 0 1px 4px rgba(0, 0, 0, 0.02);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 10000;
+            display: none;
+            flex-direction: column;
+            gap: var(--spacing-xs);
+            min-width: 180px;
+            user-select: none;
+        }
+
+        .controls-panel.open {
+            display: flex;
+        }
+
+        /* 大小调整行 */
+        .size-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px;
+        }
+
+        .size-control label {
+            font-size: 12px;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .size-control input[type="range"] {
+            flex: 1;
+            cursor: pointer;
+        }
+
+        .size-control .size-value {
+            font-size: 12px;
+            color: var(--color-primary);
+            font-weight: 600;
+            min-width: 36px;
+            text-align: right;
+        }
+
+        /* 动作下拉菜单 */
+        .action-dropdown {
+            position: relative;
+        }
+
+        .action-dropdown-btn {
+            width: 100%;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .action-dropdown-btn::after {
+            content: '▼';
+            font-size: 10px;
+            color: var(--text-muted);
+            transition: transform 0.2s;
+        }
+
+        .action-dropdown.open .action-dropdown-btn::after {
+            transform: rotate(180deg);
+        }
+
+        .action-dropdown-menu {
+            display: none;
+            flex-direction: column;
+            gap: 4px;
+            padding-top: 4px;
+        }
+
+        .action-dropdown.open .action-dropdown-menu {
+            display: flex;
+        }
+
+        /* --- 定时任务区域 --- */
+        .timer-section {
+            border-top: 1px solid var(--border-color);
+            padding-top: 8px;
+            margin-top: 4px;
+        }
+
+        .timer-section-title {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            padding: 0 4px;
+        }
+
+        .timer-task {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 4px;
+            border-radius: var(--border-radius-sm);
+            transition: background-color 0.2s;
+        }
+
+        .timer-task:hover {
+            background-color: rgba(209, 119, 90, 0.05);
+        }
+
+        .timer-task-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .timer-task-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-main);
+        }
+
+        .timer-task-interval {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .timer-task-status {
+            font-size: 11px;
+            color: var(--color-primary);
+            font-weight: 500;
+        }
+
+        .timer-btn {
+            padding: 4px 10px;
+            font-size: 12px;
+            border-radius: var(--border-radius-sm);
+        }
+
+        .timer-btn.active {
+            background-color: var(--color-primary);
+            color: white;
+            border-color: var(--color-primary);
+        }
+
+        /* --- 气泡提醒 --- */
+        .bubble-toast {
+            position: fixed;
+            /* 动态定位到桌宠上方，由 JS 设置 top/left */
+            background-color: #2C2B29;
+            color: #F3EFEA;
+            padding: 16px 24px;
+            border-radius: var(--border-radius-lg);
+            font-size: 15px;
+            font-weight: 500;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            z-index: 10001;
+            opacity: 0;
+            transform: translateX(-50%) translateY(10px);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+            white-space: nowrap;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .bubble-toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .bubble-toast::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 8px solid #2C2B29;
+        }
+
+        .bubble-toast-text {
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .bubble-toast-btn {
+            padding: 6px 20px;
+            font-size: 13px;
+            border-radius: var(--border-radius-round);
+            background-color: var(--color-primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .bubble-toast-btn:hover {
+            background-color: #b8654a;
+            transform: scale(1.05);
+        }
+
+        /* --- 按钮：Claude 风格 --- */
+        button {
+            padding: 8px 16px;
+            margin: 0;
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-md);
+            background-color: var(--bg-surface);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.2px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+        }
+
+        button:hover {
+            background-color: #FAFAF8;
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+            box-shadow: 0 2px 6px rgba(209, 119, 90, 0.15);
+        }
+
+        button:active {
+            transform: translateY(1px);
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 控制面板图标 -->
+    <div class="controls-icon" id="controlsIcon">
+        <img src="TRAE.png" alt="设置">
+    </div>
+
+    <!-- 控制面板展开内容 -->
+    <div class="controls-panel" id="controlsPanel">
+        <div class="size-control">
+            <label>大小</label>
+            <input type="range" id="sizeSlider" min="20" max="150" value="40">
+            <span class="size-value" id="sizeValue">40%</span>
+        </div>
+        <div class="action-dropdown" id="actionDropdown">
+            <button class="action-dropdown-btn" onclick="toggleDropdown()">切换动作</button>
+            <div class="action-dropdown-menu">
+                <button onclick="triggerAction('idle')">发呆</button>
+                <button onclick="triggerAction('walk')">散步</button>
+                <button onclick="triggerAction('run')">奔跑</button>
+                <button onclick="triggerAction('sit')">坐下</button>
+                <button onclick="triggerAction('sleep')">睡觉</button>
+                <button onclick="triggerAction('wave')">招手</button>
+                <button onclick="triggerAction('happy')">开心</button>
+                <button onclick="triggerAction('eat')">吃东西</button>
+            </div>
+        </div>
+        <div class="timer-section">
+            <div class="timer-section-title">定时提醒</div>
+            <div class="timer-task">
+                <div class="timer-task-info">
+                    <span class="timer-task-name">喝水提醒</span>
+                    <span class="timer-task-interval">每 15 分钟</span>
+                </div>
+                <button class="timer-btn" id="waterBtn" onclick="toggleTimer('water')">开启</button>
+            </div>
+            <div class="timer-task">
+                <div class="timer-task-info">
+                    <span class="timer-task-name">站立提醒</span>
+                    <span class="timer-task-interval">每 30 分钟</span>
+                </div>
+                <button class="timer-btn" id="standBtn" onclick="toggleTimer('stand')">开启</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 气泡提醒 -->
+    <div class="bubble-toast" id="bubbleToast">
+        <span class="bubble-toast-text" id="bubbleToastText"></span>
+        <button class="bubble-toast-btn" id="bubbleToastBtn" onclick="hideBubble()">知道了</button>
+    </div>
+
+    <canvas id="petCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('petCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // 使画布全屏
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // 动画帧映射表 (根据 spritesheet.webp 实际帧数修正)
+        // 图片为 8列 x 9行，但部分行的实际有效帧数少于 8
+        // speed 表示每帧持续多少 tick，tick 在 60fps 下约为 16.7ms
+        // loop: 是否循环播放；holdDuration: 非循环动画在最后一帧停留的 tick 数
+        const ANIMATIONS = {
+            idle:  { row: 0, frames: 6, speed: 12, loop: true },   // 闲置/呼吸，实际 6 帧
+            walk:  { row: 1, frames: 8, speed: 8,  loop: true },   // 行走，8 帧
+            run:   { row: 2, frames: 8, speed: 6,  loop: true },   // 奔跑，8 帧
+            wave:  { row: 3, frames: 4, speed: 10, loop: true },   // 招手，4 帧
+            sit:   { row: 4, frames: 5, speed: 14, loop: true },   // 坐下，5 帧
+            sleep: { row: 5, frames: 4, speed: 18, loop: false, holdDuration: 3600 }, // 睡觉，实际 4 帧有效（0-3），第4帧重复，第5帧空白
+            happy: { row: 6, frames: 5, speed: 10, loop: true },   // 开心，5 帧
+            eat:   { row: 7, frames: 6, speed: 10, loop: true }    // 吃东西，6 帧
+        };
+
+        // 只执行一次的动作列表（执行完后自动回到 idle）
+        const ONE_SHOT_ACTIONS = ['wave', 'happy', 'eat'];
+
+        class CapiPet {
+            constructor() {
+                this.image = new Image();
+                // 在本地测试时，请确保 spritesheet.webp 与此 HTML 同级目录
+                this.image.src = 'spritesheet.webp';
+
+                this.isLoaded = false;
+                this.hasError = false;
+                this.image.onload = () => {
+                    this.isLoaded = true;
+                    // 计算单帧尺寸 (8列, 9行)
+                    this.frameWidth = this.image.width / 8;
+                    this.frameHeight = this.image.height / 9;
+
+                    // 基础缩放比例（对应 100%）
+                    this.baseScale = 1.5;
+                    // 默认显示 40% 大小
+                    this.scale = this.baseScale * 0.4;
+                    this.width = this.frameWidth * this.scale;
+                    this.height = this.frameHeight * this.scale;
+
+                    // 初始位置 (屏幕中间)
+                    this.x = canvas.width / 2 - this.width / 2;
+                    this.y = canvas.height - this.height - 50;
+                };
+
+                this.image.onerror = () => {
+                    this.hasError = true;
+                    console.error("图片加载失败，请检查路径。");
+                };
+
+                this.state = 'idle';
+                this.frameIndex = 0;
+                this.tickCount = 0;
+                this.direction = 1; // 1 为右（默认），-1 为左
+
+                // 拖拽相关
+                this.isDragging = false;
+                this.dragOffsetX = 0;
+                this.dragOffsetY = 0;
+
+                // 随机行为定时器
+                this.behaviorTimer = 0;
+
+                // 非循环动画在最后一帧的停留计时器
+                this.holdTimer = 0;
+
+                // 一次性动作完成后回到 idle 的标记
+                this.oneShotReturnTimer = 0;
+
+                this.bindEvents();
+            }
+
+            setScale(percent) {
+                // percent 是 50~200 的整数
+                this.scale = this.baseScale * (percent / 100);
+                if (this.isLoaded) {
+                    this.width = this.frameWidth * this.scale;
+                    this.height = this.frameHeight * this.scale;
+                }
+            }
+
+            setState(newState, options = {}) {
+                if (this.state !== newState) {
+                    this.state = newState;
+                    // 只有需要强制重置时才重置帧索引，避免切换时画面跳变
+                    if (!options.keepFrame) {
+                        this.frameIndex = 0;
+                    }
+                    // 保留 tickCount 让动画节奏连续，避免切换时突然跳帧
+                    // 如果新状态的 speed 比当前 tickCount 还小，则取模对齐
+                    const anim = ANIMATIONS[this.state];
+                    if (this.tickCount >= anim.speed) {
+                        this.tickCount = this.tickCount % anim.speed;
+                    }
+                    // 重置一次性动作返回计时器
+                    this.oneShotReturnTimer = 0;
+                } else {
+                    // 相同状态切换时，如果指定了 keepFrame 则保留帧索引
+                    // 否则也保留，避免 idle -> idle 时画面重置
+                    if (options.keepFrame !== false) {
+                        // 什么都不做，保持当前 frameIndex 和 tickCount
+                    } else {
+                        this.frameIndex = 0;
+                        this.tickCount = 0;
+                    }
+                }
+            }
+
+            bindEvents() {
+                // 鼠标交互实现拖拽
+                canvas.addEventListener('mousedown', (e) => {
+                    if (e.clientX >= this.x && e.clientX <= this.x + this.width &&
+                        e.clientY >= this.y && e.clientY <= this.y + this.height) {
+                        this.isDragging = true;
+                        this.dragOffsetX = e.clientX - this.x;
+                        this.dragOffsetY = e.clientY - this.y;
+                        this.setState('wave'); // 提起来时招手
+                    }
+                });
+
+                window.addEventListener('mousemove', (e) => {
+                    if (this.isDragging) {
+                        this.x = e.clientX - this.dragOffsetX;
+                        this.y = e.clientY - this.dragOffsetY;
+                    }
+                    // 检测鼠标是否在宠物区域内，控制鼠标事件穿透
+                    this.updateMouseIgnore(e.clientX, e.clientY);
+                });
+
+                window.addEventListener('mouseup', () => {
+                    if (this.isDragging) {
+                        this.isDragging = false;
+                        this.setState('idle');
+                    }
+                });
+            }
+
+            // 更新鼠标穿透状态：在宠物区域和控制面板外穿透，在宠物区域或控制面板内响应
+            updateMouseIgnore(mouseX, mouseY) {
+                // 如果正在拖拽，一定不穿透
+                if (this.isDragging) {
+                    if (window.electronAPI) {
+                        window.electronAPI.setIgnoreMouseEvents(false);
+                    }
+                    return;
+                }
+                // 判断鼠标是否在宠物矩形区域内
+                const isOverPet = mouseX >= this.x && mouseX <= this.x + this.width &&
+                                  mouseY >= this.y && mouseY <= this.y + this.height;
+                // 判断鼠标是否在控制面板区域内
+                const controlsPanel = document.querySelector('.controls-panel');
+                const controlsIcon = document.querySelector('.controls-icon');
+                let isOverControls = false;
+                if (controlsPanel) {
+                    const rect = controlsPanel.getBoundingClientRect();
+                    isOverControls = mouseX >= rect.left && mouseX <= rect.right &&
+                                     mouseY >= rect.top && mouseY <= rect.bottom;
+                }
+                if (controlsIcon && !isOverControls) {
+                    const rect = controlsIcon.getBoundingClientRect();
+                    isOverControls = mouseX >= rect.left && mouseX <= rect.right &&
+                                     mouseY >= rect.top && mouseY <= rect.bottom;
+                }
+                // 只要鼠标在宠物区域或控制面板内，就不穿透
+                if (window.electronAPI) {
+                    window.electronAPI.setIgnoreMouseEvents(!(isOverPet || isOverControls));
+                }
+            }
+
+            update() {
+                if (!this.isLoaded || this.hasError || this.isDragging) return;
+
+                const anim = ANIMATIONS[this.state];
+
+                // 帧动画更新
+                this.tickCount++;
+                if (this.tickCount > anim.speed) {
+                    this.tickCount = 0;
+                    if (anim.loop) {
+                        // 循环动画：正常循环
+                        this.frameIndex = (this.frameIndex + 1) % anim.frames;
+                    } else {
+                        // 非循环动画：播放到最后一帧后停住
+                        if (this.frameIndex < anim.frames - 1) {
+                            this.frameIndex++;
+                            this.holdTimer = 0;
+                        } else {
+                            // 已经在最后一帧，开始计时
+                            this.holdTimer++;
+                        }
+                    }
+                }
+
+                // 物理运动更新
+                if (this.state === 'walk') {
+                    this.x += 1.5 * this.direction;
+                } else if (this.state === 'run') {
+                    this.x += 3.5 * this.direction;
+                }
+
+                // 边界碰撞检测与反弹
+                if (this.x <= 0) {
+                    this.x = 0;
+                    this.direction = 1;
+                } else if (this.x + this.width >= canvas.width) {
+                    this.x = canvas.width - this.width;
+                    this.direction = -1;
+                }
+
+                // 一次性动作（wave, happy, eat）播放完一轮后自动回到 idle
+                if (ONE_SHOT_ACTIONS.includes(this.state)) {
+                    this.oneShotReturnTimer++;
+                    // 计算该动作播放一轮需要的总 tick 数
+                    const totalTicks = anim.frames * anim.speed;
+                    if (this.oneShotReturnTimer >= totalTicks) {
+                        this.setState('idle');
+                        this.oneShotReturnTimer = 0;
+                    }
+                }
+
+                // 简单的自主行为 AI (随机切换状态)
+                // 只在 idle 状态下才考虑切换，避免打断用户触发的动作
+                if (this.state === 'idle') {
+                    this.behaviorTimer++;
+                    // 约 8-15 秒才考虑切换一次状态，让当前动作播放完整
+                    const thinkInterval = 500 + Math.floor(Math.random() * 400);
+                    if (this.behaviorTimer > thinkInterval) {
+                        this.behaviorTimer = 0;
+                        this.holdTimer = 0;
+                        const rand = Math.random();
+                        // 70% 概率发呆，10% 散步，10% 坐下，7% 睡觉，3% 奔跑
+                        if (rand < 0.70) {
+                            this.setState('idle');
+                        } else if (rand < 0.80) {
+                            this.setState('walk');
+                            this.direction = Math.random() > 0.5 ? 1 : -1;
+                        } else if (rand < 0.90) {
+                            this.setState('sit');
+                        } else if (rand < 0.97) {
+                            this.setState('sleep');
+                        } else {
+                            this.setState('run');
+                            this.direction = Math.random() > 0.5 ? 1 : -1;
+                        }
+                    }
+                }
+            }
+
+            draw() {
+                if (this.hasError) {
+                    ctx.fillStyle = '#ff4d4f';
+                    ctx.font = 'bold 24px sans-serif';
+                    ctx.fillText('❌ 找不到 spritesheet.webp', canvas.width / 2 - 160, canvas.height / 2 - 20);
+                    ctx.font = '16px sans-serif';
+                    ctx.fillStyle = '#666';
+                    ctx.fillText('1. 请确保图片文件和 index.html 放在同一个文件夹内。', canvas.width / 2 - 200, canvas.height / 2 + 20);
+                    ctx.fillText('2. 请检查图片名字是否完全拼写为 spritesheet.webp', canvas.width / 2 - 200, canvas.height / 2 + 50);
+                    return;
+                }
+
+                if (!this.isLoaded) {
+                    ctx.fillStyle = '#333';
+                    ctx.font = '20px sans-serif';
+                    ctx.fillText('⏳ 正在加载水豚素材...', canvas.width / 2 - 120, canvas.height / 2);
+                    return;
+                }
+
+                const anim = ANIMATIONS[this.state];
+                const srcX = this.frameIndex * this.frameWidth;
+                const srcY = anim.row * this.frameHeight;
+
+                ctx.save();
+
+                // 处理左右朝向翻转
+                // 大部分动画原图朝右，direction=-1 时翻转
+                // 但 run 行原图朝左，需要反向处理
+                const shouldFlip = this.state === 'run'
+                    ? (this.direction === 1)   // run 行：朝右移动时才翻转
+                    : (this.direction === -1); // 其他行：朝左移动时翻转
+
+                if (shouldFlip) {
+                    ctx.translate(this.x + this.width, this.y);
+                    ctx.scale(-1, 1);
+                    ctx.drawImage(
+                        this.image,
+                        srcX, srcY, this.frameWidth, this.frameHeight,
+                        0, 0, this.width, this.height
+                    );
+                } else {
+                    ctx.drawImage(
+                        this.image,
+                        srcX, srcY, this.frameWidth, this.frameHeight,
+                        this.x, this.y, this.width, this.height
+                    );
+                }
+
+                ctx.restore();
+            }
+        }
+
+        const pet = new CapiPet();
+
+        // 游戏主循环
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            pet.update();
+            pet.draw();
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+
+        // ==================== 控制面板交互 ====================
+
+        const controlsIcon = document.getElementById('controlsIcon');
+        const controlsPanel = document.getElementById('controlsPanel');
+
+        // 图标拖拽
+        let iconDragging = false;
+        let iconDragOffsetX = 0;
+        let iconDragOffsetY = 0;
+        let iconDragMoved = false;
+
+        controlsIcon.addEventListener('mousedown', (e) => {
+            iconDragging = true;
+            iconDragMoved = false;
+            iconDragOffsetX = e.clientX - controlsIcon.offsetLeft;
+            iconDragOffsetY = e.clientY - controlsIcon.offsetTop;
+            e.stopPropagation();
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (iconDragging) {
+                const dx = e.clientX - (iconDragOffsetX + controlsIcon.offsetLeft);
+                const dy = e.clientY - (iconDragOffsetY + controlsIcon.offsetTop);
+                if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+                    iconDragMoved = true;
+                }
+                controlsIcon.style.left = (e.clientX - iconDragOffsetX) + 'px';
+                controlsIcon.style.top = (e.clientY - iconDragOffsetY) + 'px';
+                controlsIcon.style.bottom = 'auto';
+                controlsIcon.style.right = 'auto';
+
+                // 面板跟随图标移动
+                if (controlsPanel.classList.contains('open')) {
+                    controlsPanel.style.left = controlsIcon.style.left;
+                    controlsPanel.style.bottom = 'auto';
+                    controlsPanel.style.top = (e.clientY - iconDragOffsetY - controlsPanel.offsetHeight - 8) + 'px';
+                }
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            iconDragging = false;
+        });
+
+        // 点击图标展开/收起面板
+        controlsIcon.addEventListener('click', (e) => {
+            if (iconDragMoved) return; // 拖拽后不触发点击
+            controlsPanel.classList.toggle('open');
+            if (controlsPanel.classList.contains('open')) {
+                // 面板展开时定位到图标上方
+                controlsPanel.style.left = controlsIcon.style.left || controlsIcon.offsetLeft + 'px';
+                controlsPanel.style.bottom = 'auto';
+                controlsPanel.style.top = (controlsIcon.offsetTop - controlsPanel.offsetHeight - 8) + 'px';
+            }
+        });
+
+        // 点击面板外部关闭
+        window.addEventListener('click', (e) => {
+            if (!controlsPanel.contains(e.target) && !controlsIcon.contains(e.target)) {
+                controlsPanel.classList.remove('open');
+            }
+        });
+
+        // 大小调整滑块
+        const sizeSlider = document.getElementById('sizeSlider');
+        const sizeValue = document.getElementById('sizeValue');
+
+        sizeSlider.addEventListener('input', (e) => {
+            const percent = parseInt(e.target.value);
+            sizeValue.textContent = percent + '%';
+            pet.setScale(percent);
+        });
+
+        // 动作下拉菜单
+        const actionDropdown = document.getElementById('actionDropdown');
+
+        function toggleDropdown() {
+            actionDropdown.classList.toggle('open');
+        }
+
+        function closeDropdown() {
+            actionDropdown.classList.remove('open');
+        }
+
+        // 触发一次性动作
+        function triggerAction(action) {
+            pet.setState(action);
+            closeDropdown();
+            // 如果不是一次性动作，也关闭面板
+            if (!ONE_SHOT_ACTIONS.includes(action)) {
+                // 让用户可以继续操作面板
+            }
+        }
+
+        // 点击面板外部关闭下拉菜单
+        window.addEventListener('click', (e) => {
+            if (!actionDropdown.contains(e.target)) {
+                actionDropdown.classList.remove('open');
+            }
+        });
+
+        // ==================== 定时任务系统 ====================
+
+        const TIMERS = {
+            water: {
+                name: '喝水提醒',
+                interval: 15 * 60 * 1000, // 15 分钟
+                message: '该喝水啦！',
+                active: false,
+                timerId: null
+            },
+            stand: {
+                name: '站立提醒',
+                interval: 30 * 60 * 1000, // 30 分钟
+                message: '别坐着了站一会！',
+                active: false,
+                timerId: null
+            }
+        };
+
+        const bubbleToast = document.getElementById('bubbleToast');
+        const bubbleToastText = document.getElementById('bubbleToastText');
+        let bubbleUpdateInterval = null;
+
+        // 更新气泡位置（跟随桌宠）
+        function updateBubblePosition() {
+            if (!bubbleToast.classList.contains('show')) return;
+            const petCenterX = pet.x + pet.width / 2;
+            const petTopY = pet.y;
+            bubbleToast.style.left = petCenterX + 'px';
+            bubbleToast.style.top = (petTopY - 70) + 'px';
+        }
+
+        // 显示气泡提醒（定位到桌宠上方，需点击知道了才消失）
+        function showBubble(message) {
+            // 设置文案
+            bubbleToastText.textContent = message;
+            bubbleToast.classList.add('show');
+
+            // 立即定位到桌宠上方
+            updateBubblePosition();
+
+            // 启动位置跟随定时器，每帧更新位置
+            if (bubbleUpdateInterval) {
+                clearInterval(bubbleUpdateInterval);
+            }
+            bubbleUpdateInterval = setInterval(updateBubblePosition, 16); // ~60fps
+        }
+
+        // 隐藏气泡
+        function hideBubble() {
+            bubbleToast.classList.remove('show');
+            if (bubbleUpdateInterval) {
+                clearInterval(bubbleUpdateInterval);
+                bubbleUpdateInterval = null;
+            }
+        }
+
+        // 切换定时任务
+        function toggleTimer(type) {
+            const timer = TIMERS[type];
+            const btn = document.getElementById(type + 'Btn');
+
+            if (timer.active) {
+                // 关闭定时器
+                clearInterval(timer.timerId);
+                timer.active = false;
+                timer.timerId = null;
+                btn.textContent = '开启';
+                btn.classList.remove('active');
+            } else {
+                // 开启定时器
+                timer.active = true;
+                btn.textContent = '关闭';
+                btn.classList.add('active');
+
+                // 设置定时循环，倒计时结束后才弹窗
+                timer.timerId = setInterval(() => {
+                    showBubble(timer.message);
+                }, timer.interval);
+            }
+        }
+    </script>
+</body>
+</html>
